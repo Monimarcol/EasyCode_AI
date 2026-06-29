@@ -1,102 +1,226 @@
-# 🚀 Easy Code Assistant
+# 🚀 EasyCode AI
+![Version](https://img.shields.io/badge/version-v1.0.0-blue)
+![Python](https://img.shields.io/badge/Python-3.11+-yellow)
+![VSCode](https://img.shields.io/badge/VS%20Code-Extension-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Offline AI](https://img.shields.io/badge/AI-Offline-red)
 
-An **offline AI-powered coding assistant for Visual Studio Code** that integrates with **LM Studio** and local LLMs to provide intelligent code explanations, debugging, and automated patch generation.
+> **Offline AI Coding Assistant for Visual Studio Code**
 
-Unlike cloud-based coding assistants, Easy Code Assistant runs **completely offline**, ensuring privacy, zero API costs, and fast local inference.
+An intelligent offline coding assistant that integrates directly into **Visual Studio Code**, helping developers debug, understand, and automatically fix code using a **locally running Large Language Model (LLM)** through **LM Studio**.
+
+Unlike cloud-based assistants, **EasyCode AI** works completely offline, giving you faster development, lower cost, and complete privacy.
 
 ---
 
 # ✨ Features
 
-## 💬 AI Chat
+## 🤖 AI Chat
 
-- Ask programming questions
-- Explain code
-- Learn concepts
-- Refactor code
-- Generate code snippets
+Ask programming questions directly inside VS Code.
 
----
+Examples:
 
-## 🐞 AI Debugging
-
-- Detect errors from VS Code diagnostics
-- Send relevant code context to the local LLM
-- Generate structured patch JSON
-- Preview changes before applying
-- Apply fixes with one click
+* Explain async/await
+* What is dependency injection?
+* How does FastAPI work?
+* Explain this code
 
 ---
 
-## 📄 Diff Preview
+## 🐞 Debug with AI
 
-Before modifying your code, the extension displays a diff view so you can review the proposed changes.
+Click **Debug with Chat** on any compiler error or warning.
+
+EasyCode AI automatically:
+
+* Collects diagnostics
+* Extracts surrounding code
+* Sends the context to the local LLM
+* Generates an explanation
+* Suggests fixes
 
 ---
 
-## 🔒 Offline First
+## 🧩 AI Patch Generation
 
-Runs entirely on your local machine using:
+Instead of only explaining the issue, the assistant generates structured patches describing exactly what should change.
 
-- LM Studio
-- Local LLMs
-- No cloud APIs
-- No internet required
+Supported operations:
+
+* Replace
+* Delete
+* Insert Before
+* Insert After
+
+---
+
+## 🔍 Patch Preview
+
+Before modifying your source code, EasyCode AI opens a **VS Code Diff Preview**, allowing you to review every change.
+
+No code is modified automatically.
+
+---
+
+## ✅ One-click Apply
+
+After reviewing the diff:
+
+* Click **Apply**
+* Changes are written into your file
+* File is formatted automatically
+* Diagnostics are rechecked
+
+---
+
+## 📡 Streaming Responses
+
+Responses are streamed token-by-token for a smoother user experience.
+
+---
+
+## 🔒 Fully Offline
+
+No cloud APIs.
+
+No internet required.
+
+All inference happens locally using:
+
+* LM Studio
+* Local GGUF / MLX models
+
+---
+
+# 📸 Screenshots
+
+## AI Chat
+
+![Chat Window](docs/images/chat-window.png)
+
+---
+
+## Quick Fix Action
+
+![Quick Fix](docs/images/quick-fix.png)
+
+---
+
+## Diff Preview
+
+![Diff Preview](docs/images/diff-preview.png)
+
+---
+
+## Successful Fix
+
+![Success](docs/images/success.png)
 
 ---
 
 # 🏗 Architecture
 
-```
-VS Code Extension
-        │
-        ▼
-extension.ts
-        │
-        ▼
-Flask Backend
-        │
-        ▼
-OpenAI Compatible API
-(LM Studio)
-        │
-        ▼
-Qwen2.5-Coder-3B-Instruct
-        │
-        ▼
-Patch JSON
-        │
-        ▼
-Apply Patch
+```text
+                    +------------------------+
+                    |    Visual Studio Code  |
+                    +-----------+------------+
+                                |
+                                |
+                     VS Code Extension
+                                |
+                                |
+                    +-----------v------------+
+                    |     Extension.ts       |
+                    +-----------+------------+
+                                |
+                 HTTP Streaming Requests
+                                |
+                                |
+                    +-----------v------------+
+                    |      Flask Server      |
+                    +-----------+------------+
+                                |
+                    OpenAI Compatible API
+                                |
+                                |
+                    +-----------v------------+
+                    |       LM Studio        |
+                    +-----------+------------+
+                                |
+                    Local LLM (Offline)
+                                |
+             Qwen / Gemma / DeepSeek Coder
 ```
 
 ---
 
-# 🛠 Tech Stack
+# ⚙️ Tech Stack
 
-- TypeScript
-- Visual Studio Code Extension API
-- Flask
-- Python
-- OpenAI Python SDK
-- LM Studio
-- Qwen2.5-Coder
-- HTML
-- JavaScript
+## Frontend
+
+* Visual Studio Code Extension API
+* TypeScript
+* HTML
+* JavaScript
+
+## Backend
+
+* Python
+* Flask
+
+## AI
+
+* LM Studio
+* OpenAI Compatible API
+
+## Models
+
+Tested with:
+
+* Qwen2.5-Coder-3B
+* Qwen2.5-Coder-14B
+* Gemma
 
 ---
 
-# 📦 Installation
+# 📂 Project Structure
 
-## Clone Repository
+```text
+EasyCode_AI/
+
+│
+├── app.py
+├── requirements.txt
+├── README.md
+│
+├── easy-code-assistant/
+│   ├── src/
+│   │    └── extension.ts
+│   │
+│   ├── webview/
+│   │    └── chat.html
+│   │
+│   ├── package.json
+│   └── tsconfig.json
+│
+└── docs/
+    └── images/
+```
+
+---
+
+# 🚀 Installation
+
+## 1. Clone
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/easy-code-assistant.git
+git clone https://github.com/Monimarcol/Easy_code_assistant.git
 ```
 
 ---
 
-## Install Python dependencies
+## 2. Install Python Dependencies
 
 ```bash
 pip install -r requirements.txt
@@ -104,33 +228,45 @@ pip install -r requirements.txt
 
 ---
 
-## Install VS Code dependencies
+## 3. Install Extension Dependencies
 
 ```bash
+cd easy-code-assistant
+
 npm install
 ```
 
 ---
 
-## Start LM Studio
+## 4. Compile Extension
 
-Load your preferred coding model.
-
-Example:
-
-- Qwen2.5-Coder-3B-Instruct-MLX
-
-Start the local server.
-
-Default endpoint:
-
-```
-http://localhost:1234/v1
+```bash
+npm run compile
 ```
 
 ---
 
-## Run Flask
+## 5. Package Extension
+
+```bash
+npx @vscode/vsce package
+```
+
+---
+
+## 6. Install VSIX
+
+Inside VS Code:
+
+Extensions
+
+→
+
+Install from VSIX
+
+---
+
+## 7. Start Backend
 
 ```bash
 python app.py
@@ -138,92 +274,131 @@ python app.py
 
 ---
 
-## Run Extension
+## 8. Start LM Studio
 
-Open the project in VS Code.
+Load any supported coding model.
 
-Press
+Example:
 
-```
-F5
-```
+* Qwen2.5-Coder-3B-Instruct
+* Qwen2.5-Coder-14B-Instruct
 
-to launch the Extension Development Host.
+Start the local server.
 
 ---
 
-# 📂 Project Structure
+# 💻 Usage
+
+### Chat
+
+Ask:
 
 ```
-Easy-Code-Assistant/
-
-├── app.py
-├── src/
-│   └── extension.ts
-├── webview/
-│   └── chat.html
-├── package.json
-├── requirements.txt
-└── README.md
+Explain async await
 ```
 
 ---
 
-# 🚀 Current Features (Version 1)
+### Debug
 
-- Offline AI Chat
-- AI Debugging
-- Patch JSON generation
-- Diff Preview
-- One-click Patch Apply
-- Streaming Responses
-- LM Studio Integration
+Click
 
----
+```
+💡 Debug with Chat
+```
 
-# 🗺 Roadmap
+The assistant:
 
-## Version 2
-
-- Multi-error fixing
-- Improved patch matching
-- Faster patch application
+* Reads diagnostics
+* Collects nearby code
+* Generates explanation
+* Generates patch
+* Shows Diff Preview
+* Applies fix
 
 ---
 
-## Version 3
+# 📈 Current Features (v1.0.0)
 
-- Project indexing
-- Multi-file context
-- Smarter code understanding
-
----
-
-## Version 4
-
-- Automatic verification
-- Retry failed patches
-- Ruff integration
-- Pyright integration
+* Offline AI Chat
+* Debug Compiler Errors
+* AI Patch Generation
+* Patch Preview
+* One-click Apply
+* Automatic Formatting
+* Diagnostics Verification
+* Streaming Responses
+* Local LLM Integration
 
 ---
 
-## Version 5
+# 🛣 Roadmap
 
-- AI Agent
-- Repository understanding
-- Multi-file editing
+## ✅ Version 1.0.0
+
+Current release.
+
+---
+
+## 🚀 Version 1.1.0
+
+* Multi-error fixing
+* Fix all diagnostics in one pass
+
+---
+
+## 🚀 Version 1.2.0
+
+* Workspace indexing
+* Multi-file understanding
+* Related file context
+
+---
+
+## 🚀 Version 1.3.0
+
+* Automatic verification
+* Retry failed fixes
+* Better patch matching
+
+---
+
+## 🚀 Version 2.0.0
+
+Full Repository AI Assistant
+
+Features planned:
+
+* Project-wide code understanding
+* Repository chat
+* AI Refactoring
+* AI Code Generation
+* AI Documentation
+* AI Unit Test Generation
+* AI Commit Message Generator
 
 ---
 
 # 🤝 Contributing
 
-Contributions are welcome!
+Contributions, feature ideas, and bug reports are welcome.
 
-Feel free to submit issues or pull requests.
+Feel free to open an Issue or Pull Request.
 
 ---
 
-# 📜 License
+# 👨‍💻 Author
 
-MIT License
+**Moni Marcol**
+
+AI / ML Engineer
+
+GitHub:
+
+https://github.com/Monimarcol
+
+---
+
+# 📄 License
+
+This project is licensed under the MIT License.
