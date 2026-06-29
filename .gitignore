@@ -216,3 +216,24 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+
+# macOS
+.DS_Store
+
+# Node
+node_modules/
+
+# VS Code build
+dist/
+
+# VS Code workspace settings
+.vscode/
+
+# Logs
+error.log
+
+# VS Code Extension build artifacts
+easy-code-assistant/node_modules/
+easy-code-assistant/dist/
+easy-code-assistant/*.vsix

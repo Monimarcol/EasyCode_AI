@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body { 
+            padding: 10px;
+            font-family: var(--vscode-font-family);
+            color: var(--vscode-foreground);
+            line-height: 1.5;
+        }
+
+        #history > div {
+            margin-bottom: 25px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--vscode-widget-border);
+        }
+
+        pre {
+            background: #1e1e1e;
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            border: 1px solid #333;
+        }
+
+        code {
+            font-family: var(--vscode-editor-font-family);
+            color: #ce9178;
+        }
+
+        .thinking {
+            font-size: 0.85em;
+            color: #888;
+            font-style: italic;
+            background: rgba(255,255,255,0.05);
+            padding: 10px;
+            border-radius: 4px;
+            border-left: 3px solid #007acc;
+            margin-bottom: 10px;
+        }
+
+        .streaming-indicator {
+            font-size: 0.8em;
+            color: #007acc;
+            margin-top: 5px;
+            font-weight: bold;
+        }
+
+        button {
+            background: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            border: none;
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 2px;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background: var(--vscode-button-hoverBackground);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="history"></div>
+
+    <textarea
+        id="in"
+        style="
+            width:100%;
+            height:80px;
+            background:var(--vscode-input-background);
+            color:var(--vscode-input-foreground);
+            border:1px solid var(--vscode-input-border);
+        "
+        placeholder="Ask AI anything..."
+    ></textarea>
+
+    <button onclick="send()">Ask AI</button>
+
+    <script>
+
+        const vscode = acquireVsCodeApi();
+
+        let fullResponse = "";
+        let currentCodeContext = "";
+        let expectingPatch = false;
+
+        function formatResponse(text) {
+            return text
+                .replace(
+                    /\*\*Thinking Process\*\*:/g,
+                    '<div class="thinking"><b>Thinking:</b>'
+                )
+                .replace(
+                    /\*\*Patch\*\*:/g,
+                    '</div><div class="solution"><b>Patch:</b>'
+                ) + '</div>';
+        }
+
+        function extractPatch(responseText) {
+
+    try {
+
+        let jsonText = "";
+
+        const startIndex =
+            responseText.lastIndexOf("JSON_START");
+
+        const endIndex =
+            responseText.lastIndexOf("JSON_END");
+
+        if (
+            startIndex !== -1 &&
+            endIndex !== -1 &&
+            endIndex > startIndex
+        ) {
+
+            jsonText =
+                responseText.substring(
+                    startIndex + "JSON_START".length,
+                    endIndex
+                );
+
+        } else {
+
+            const jsonMatch =
+                responseText.match(
+                    /```json\s*([\s\S]*?)```/i
+                );
+
+            if (!jsonMatch) {
+
+                console.log(
+                    "No JSON block found"
+                );
+
+                return null;
+            }
+
+            jsonText = jsonMatch[1];
+        }
+
+        let cleanedJson = jsonText.trim();
+
+        // Sometimes models wrap JSON with commas or extra text
+        cleanedJson = cleanedJson.replace(/^```json/i, "");
+        cleanedJson = cleanedJson.replace(/```$/, "");
+        cleanedJson = cleanedJson.trim();
+
+        return JSON.parse(cleanedJson);
+
+    } catch (err) {
+
+        console.error(
+            "Failed to parse patch JSON:",
+            err
+        );
+
+        return null;
+    }
+}
+
+        window.addEventListener('message', e => {
+
+            const m = e.data;
+            const h = document.getElementById('history');
+
+            if (m.type === 'injectContext') {
+
+                currentCodeContext = m.code;
+
+                const input = document.getElementById('in');
+
+                input.value =
+                    `Please debug this error: ${m.error}`;
+
+                send();
+            }
+
+            else if (m.type === 'streamToken') {
+
+                let activeDiv =
+                    document.getElementById('active-response');
+
+                if (!activeDiv) {
+
+                    h.innerHTML +=
+                        '<div id="active-response"></div>';
+
+                    activeDiv =
+                        document.getElementById('active-response');
+                }
+
+                fullResponse += m.token;
+
+                activeDiv.innerHTML =
+                    marked.parse(
+                        formatResponse(fullResponse)
+                    ) +
+                    '<div class="streaming-indicator">Gemma is thinking...</div>';
+
+                window.scrollTo(
+                    0,
+                    document.body.scrollHeight
+                );
+            }
+
+            else if (m.type === 'streamDone') {
+
+    const activeDiv =
+        document.getElementById('active-response');
+
+    if (!activeDiv) {
+        return;
+    }
+
+    const responseSnapshot = fullResponse;
+
+    console.log("STREAM DONE");
+    console.log(responseSnapshot);
+
+    const patch =
+        expectingPatch
+            ? extractPatch(responseSnapshot)
+            : null;
+
+    if (patch) {
+
+        const buttonId =
+            "applyBtn_" + Date.now();
+
+        activeDiv.innerHTML =
+            marked.parse(
+                formatResponse(responseSnapshot)
+            ) +
+            `<br>
+                <button id="${buttonId}">
+                    Apply Changes
+                </button>
+            `;
+
+        const applyButton =
+            document.getElementById(buttonId);
+
+        applyButton.onclick = () => {
+
+            console.log("PATCH:");
+            console.log(patch);
+
+            vscode.postMessage({
+                type: 'applyPatch',
+                patch: patch
+            });
+        };
+
+    } else {
+
+        activeDiv.innerHTML =
+            marked.parse(
+                formatResponse(responseSnapshot)
+            );
+    }
+
+    activeDiv.removeAttribute("id");
+
+    fullResponse = "";
+    expectingPatch = false;
+}
+
+        });
+        function send() {
+
+        const input =
+            document.getElementById('in');
+
+        if (!input.value) {
+            return;
+        }
+
+        document.getElementById('history').innerHTML +=
+            '<div><b>You:</b> ' +
+            input.value +
+            '</div>';
+
+        console.log("Sending request to extension...");
+        console.log(input.value);
+
+        const isDebug =
+            currentCodeContext !== "";
+
+        expectingPatch = isDebug;
+
+        vscode.postMessage({
+            type: 'sendMessage',
+            text: input.value,
+            codeContext: currentCodeContext,
+            isDebugMode: isDebug
+        });
+
+        input.value = "";
+        currentCodeContext = "";
+    }
+
+    </script>
+
+</body>
+</html>

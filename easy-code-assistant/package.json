@@ -1,0 +1,72 @@
+{
+  "name": "easy-code-assistant",
+  "displayName": "Easy Code Assistant",
+  "description": "Cursor-like AI Chat and Debugging Assistant",
+  "version": "0.0.1",
+  "publisher": "developer",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "AI",
+    "Programming Languages"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "easy-code-chat-container",
+          "title": "Easy Code Chat",
+          "icon": "$(comment-discussion)"
+        }
+      ]
+    },
+    "views": {
+      "easy-code-chat-container": [
+        {
+          "type": "webview",
+          "id": "easy-code-assistant.chatView",
+          "name": "AI Chat",
+          "icon": "$(bug)"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "easy-code-assistant.debugWithChat",
+        "title": "✨ Debug this error with Chat"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "easy-code-assistant.debugWithChat",
+          "group": "navigation"
+        }
+      ]
+    },
+    "codeActions": [
+      {
+        "language": "python",
+        "kind": "quickfix"
+      },
+      {
+        "language": "typescript",
+        "kind": "quickfix"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^18.11.18",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.3"
+  }
+}

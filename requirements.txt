@@ -1,0 +1,8 @@
+openai
+lmstudio
+streamlit
+pyperclip
+watchdog
+fastapi
+uvicorn
+flask
