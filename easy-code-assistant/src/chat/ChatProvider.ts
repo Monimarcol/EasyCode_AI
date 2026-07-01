@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { streamAssistantResponse } from '../services/ApiClient';
 
 
 export class EasyCodeChatProvider implements vscode.WebviewViewProvider {
@@ -132,60 +133,17 @@ export class EasyCodeChatProvider implements vscode.WebviewViewProvider {
                         console.log("REQUEST:");
                         console.log(requestBody);
 
-                        const response = await fetch(
-                            endpoint,
-                            {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json'
-                                },
-                                body: JSON.stringify(
-                                    requestBody
-                                )
-                            }
-                        );
-
-                        if (
-                            !response.ok ||
-                            !response.body
-                        ) {
-                            throw new Error(
-                                'Server connection failed'
+                        const fullResponse =
+                            await streamAssistantResponse(
+                                endpoint,
+                                requestBody,
+                                (chunk) => {
+                                    this._view?.webview.postMessage({
+                                        type: 'streamToken',
+                                        token: chunk
+                                    });
+                                }
                             );
-                        }
-
-                        const reader =
-                            response.body.getReader();
-
-                        const decoder =
-                            new TextDecoder('utf-8');
-
-                        let fullResponse = "";
-
-                        while (true) {
-
-                            const {
-                                done,
-                                value
-                            } = await reader.read();
-
-                            if (done) {
-                                break;
-                            }
-
-                            const chunk =
-                                decoder.decode(
-                                    value,
-                                    { stream: true }
-                                );
-
-                            fullResponse += chunk;
-
-                            this._view?.webview.postMessage({
-                                type: 'streamToken',
-                                token: chunk
-                            });
-                        }
 
                         console.log("========== FULL RESPONSE ==========");
                         console.log(fullResponse);
