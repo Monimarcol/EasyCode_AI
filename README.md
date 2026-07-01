@@ -180,7 +180,7 @@ Tested with:
 
 * Qwen2.5-Coder-3B
 * Qwen2.5-Coder-14B
-* Gemma
+* Gemma 12B
 
 ---
 
