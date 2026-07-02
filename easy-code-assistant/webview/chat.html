@@ -101,67 +101,128 @@
                 ) + '</div>';
         }
 
+        function normalizePatchNewValue(type, value) {
+    let cleaned = value.trim();
+
+    if (
+        type === "insert_before" ||
+        type === "insert_after"
+    ) {
+        if (cleaned && !cleaned.endsWith("\n")) {
+            cleaned = cleaned + "\n";
+        }
+    }
+
+    return cleaned;
+}
+
         function extractPatch(responseText) {
 
-    try {
+    const patches = [];
 
-        let jsonText = "";
+    const blocks =
+        responseText.split("PATCH_START");
 
-        const startIndex =
-            responseText.lastIndexOf("JSON_START");
+    for (const block of blocks) {
 
-        const endIndex =
-            responseText.lastIndexOf("JSON_END");
-
-        if (
-            startIndex !== -1 &&
-            endIndex !== -1 &&
-            endIndex > startIndex
-        ) {
-
-            jsonText =
-                responseText.substring(
-                    startIndex + "JSON_START".length,
-                    endIndex
-                );
-
-        } else {
-
-            const jsonMatch =
-                responseText.match(
-                    /```json\s*([\s\S]*?)```/i
-                );
-
-            if (!jsonMatch) {
-
-                console.log(
-                    "No JSON block found"
-                );
-
-                return null;
-            }
-
-            jsonText = jsonMatch[1];
+        if (!block.includes("PATCH_END")) {
+            continue;
         }
 
-        let cleanedJson = jsonText.trim();
+        const body =
+            block.split("PATCH_END")[0];
 
-        // Sometimes models wrap JSON with commas or extra text
-        cleanedJson = cleanedJson.replace(/^```json/i, "");
-        cleanedJson = cleanedJson.replace(/```$/, "");
-        cleanedJson = cleanedJson.trim();
+        const typeMatch =
+            body.match(
+                /TYPE:\s*(replace|insert_before|insert_after|delete)/i
+            );
 
-        return JSON.parse(cleanedJson);
+        const oldMatch =
+            body.match(
+                /OLD:\s*([\s\S]*?)\nNEW:/i
+            );
 
-    } catch (err) {
+        const newMatch =
+            body.match(
+                /NEW:\s*([\s\S]*)/i
+            );
 
-        console.error(
-            "Failed to parse patch JSON:",
-            err
+        if (
+            !typeMatch ||
+            !oldMatch ||
+            !newMatch
+        ) {
+            continue;
+        }
+
+        const type = typeMatch[1].trim().toLowerCase();
+let oldValue = oldMatch[1].trim();
+let newValue = normalizePatchNewValue(
+    type,
+    newMatch[1]
+);
+
+if (
+    type === "insert_before" &&
+    oldValue.startsWith("import ") &&
+    !newValue.trim()
+) {
+    console.log("Repairing swapped import insert patch");
+
+    newValue = oldValue + "\n";
+
+    const firstCodeLine =
+        responseText.match(/data\s*=\s*pd\.read_csv[^\n]*/);
+
+    if (firstCodeLine) {
+        oldValue = firstCodeLine[0].trim();
+    }
+}
+
+if (
+    newValue.includes("# Ensure") ||
+    newValue.includes("# Add") ||
+    newValue.includes("PATCH_START") ||
+    newValue.includes("PATCH_END")
+) {
+    console.log("Rejected patch with explanation/comment");
+    continue;
+}
+
+if (
+    type === "replace" &&
+    oldValue.split("\n").length > 2
+) {
+    console.log("Rejected large replace patch");
+    continue;
+}
+
+if (
+    oldValue === newValue.trim()
+) {
+    console.log("Rejected no-op patch");
+    continue;
+}
+
+        patches.push({
+    type,
+    old: oldValue,
+    new: newValue
+});
+    }
+
+    if (patches.length === 0) {
+
+        console.log(
+            "No PATCH blocks found"
         );
 
         return null;
     }
+
+    return {
+        changes: patches
+    };
 }
 
         window.addEventListener('message', e => {

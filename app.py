@@ -9,7 +9,7 @@ client = OpenAI(
     api_key="lm-studio"
 )
 
-MODEL_NAME = "qwen2.5-coder-3b-instruct-mlx"
+MODEL_NAME = "qwen2.5-coder-7b-instruct-mlx"
 
 @app.route('/fix', methods=['POST'])
 def fix_code():
@@ -35,47 +35,90 @@ def fix_code():
                     {
                         "role": "system",
                         "content": """
-        You are a code patch generator.
+You are a strict code patch generator.
 
-You MUST return ONLY valid JSON.
+Return ONLY patch blocks.
 
-The response MUST start with JSON_START.
-The response MUST end with JSON_END.
+Patch format:
 
-Never explain.
-Never think.
-Never reason.
-Never use markdown.
-Never output code fences.
-Never output any text outside JSON.
+PATCH_START
+TYPE: replace
+OLD:
+exact text from FILE
+NEW:
+replacement text
+PATCH_END
 
-Supported patch types:
+Supported TYPE values:
 
 replace
 insert_before
 insert_after
 delete
 
-Format:
-
-JSON_START
-{
-  "changes": [
-    {
-      "type": "replace",
-      "old": "...",
-      "new": "..."
-    }
-  ]
-}
-JSON_END
-
 Rules:
 
-- Fix ONLY the requested error.
-- Preserve indentation exactly.
-- "old" MUST exactly match the supplied code.
+- Fix ALL errors listed in ERROR.
+- Return one small patch block per fix.
+- NEW must contain code only.
+- Never add comments in OLD.
+- Never add comments in NEW.
+- Never explain the fix inside OLD or NEW.
+- Do not add text like "# Add missing..." anywhere.
+- OLD must be copied exactly from FILE.
 - Never rewrite the whole file.
+- Never replace large multi-line blocks.
+- OLD must exactly match text from FILE.
+- NEW must contain only replacement text.
+- For insert_before:
+  - OLD is the anchor text.
+  - NEW is the text to insert before OLD.
+- For insert_after:
+  - OLD is the anchor text.
+  - NEW is the text to insert after OLD.
+- For delete:
+  - OLD is the text to delete.
+  - NEW must be empty.
+- Do not use JSON.
+- Do not use markdown.
+- Do not explain.
+
+Example:
+
+FILE:
+data = pd.read_csv(file_path)
+print(dat.head())
+pritn("done")
+
+ERROR:
+1. "pd" is not defined
+2. "dat" is not defined
+3. "pritn" is not defined
+
+PATCH_START
+TYPE: insert_before
+OLD:
+data = pd.read_csv(file_path)
+NEW:
+import pandas as pd
+
+PATCH_END
+
+PATCH_START
+TYPE: replace
+OLD:
+dat.head()
+NEW:
+data.head()
+PATCH_END
+
+PATCH_START
+TYPE: replace
+OLD:
+pritn
+NEW:
+print
+PATCH_END
 """
                     },
                     {
@@ -89,12 +132,12 @@ Rules:
 
         {error_message}
 
-        Return ONLY JSON_START ... JSON_END
+        Return ONLY PATCH_START ... PATCH_END blocks
         """
                     }
                 ],
                 temperature=0,
-                max_completion_tokens=180,
+                max_completion_tokens=500,
                 stream=False
             )
 
@@ -113,6 +156,7 @@ Rules:
 
             if content:
                 yield content
+
             print(f"Model took: {time.time() - start:.2f} seconds")
     return Response(
         stream_with_context(generate()),

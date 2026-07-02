@@ -68,27 +68,7 @@ export class EasyCodeChatProvider implements vscode.WebviewViewProvider {
 
                         if (document) {
 
-                            const selection =
-                                editor.selection.active.line;
-
-                            const start =
-                                Math.max(0, selection - 10);
-
-                            const end =
-                                Math.min(
-                                    document.lineCount - 1,
-                                    selection + 10
-                                );
-
-                            liveCode =
-                                document.getText(
-                                    new vscode.Range(
-                                        start,
-                                        0,
-                                        end,
-                                        document.lineAt(end).text.length
-                                    )
-                                );
+                            liveCode = document.getText();
                         }
 
                         const patchKeywords = [
@@ -219,6 +199,11 @@ export class EasyCodeChatProvider implements vscode.WebviewViewProvider {
                 const oldText = change.old || "";
 const newText = change.new || "";
 
+if (oldText.trim() === newText.trim()) {
+    console.log("REPLACE SKIPPED - no-op patch");
+    continue;
+}
+
 let searchText = oldText;
 
 // Try exact match first
@@ -264,6 +249,11 @@ changedCount++;
     const anchor = change.old || "";
     const content = change.new || "";
 
+    if (content.trim() && documentText.includes(content.trim())) {
+    console.log("INSERT_BEFORE SKIPPED - content already exists");
+    continue;
+}
+
     let searchText = anchor;
 
     // Try exact match first
@@ -301,6 +291,11 @@ changedCount++;
 
     const anchor = change.old || "";
     const content = change.new || "";
+
+    if (content.trim() && documentText.includes(content.trim())) {
+    console.log("INSERT_BEFORE SKIPPED - content already exists");
+    continue;
+}
 
     let searchText = anchor;
 
@@ -443,15 +438,33 @@ if (choice !== 'Apply') {
     );
 
     await new Promise(resolve =>
-        setTimeout(resolve, 1000)
+        setTimeout(resolve, 3000)
     );
 
     const diagnostics =
-        vscode.languages.getDiagnostics(
-            editor.document.uri
+    vscode.languages.getDiagnostics(
+        editor.document.uri
     );
 
-    if (diagnostics.length === 0) {
+console.log("POST-FIX DIAGNOSTICS:");
+console.log(
+    diagnostics.map(d => ({
+        message: d.message,
+        line: d.range.start.line + 1,
+        severity: d.severity
+    }))
+);
+
+const realIssues = diagnostics.filter(
+    d =>
+        (
+            d.severity === vscode.DiagnosticSeverity.Error ||
+            d.severity === vscode.DiagnosticSeverity.Warning
+        ) &&
+        !d.message.includes("is not accessed")
+);
+
+if (realIssues.length === 0) {
 
     vscode.window.showInformationMessage(
         `🎉 Error fixed successfully! Applied ${changedCount} patch(es)`
@@ -460,7 +473,7 @@ if (choice !== 'Apply') {
 } else {
 
     vscode.window.showWarningMessage(
-        `⚠️ ${diagnostics.length} issue(s) still remain`
+        `⚠️ ${realIssues.length} issue(s) still remain`
     );
 }
 

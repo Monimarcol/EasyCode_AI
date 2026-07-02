@@ -26,16 +26,31 @@ export function registerDebugCommand(
                     editor.document.uri
                 );
 
-                const error = diagnostics.find(
-                    d => d.severity === vscode.DiagnosticSeverity.Error || 
+                const errors = diagnostics.filter(
+                    d =>
+                        d.severity === vscode.DiagnosticSeverity.Error ||
                         d.severity === vscode.DiagnosticSeverity.Warning
                 );
 
+                if (errors.length === 0) {
+                    vscode.window.showInformationMessage(
+                        'No errors or warnings found in the current file.'
+                    );
+                    return;
+                }
+
+                const error = errors[0];
+
+                const errorSummary = errors.map((diagnostic, index) => {
+                    const lineNumber = diagnostic.range.start.line + 1;
+
+                    return `${index + 1}. Line ${lineNumber}: ${diagnostic.message}`;
+                }).join('\n');
+
                 const errorMessage =
-                    error?.message ||
-                    (typeof args[2] === 'string'
-                        ? args[2]
-                        : 'Unknown Error');
+                    errors.length === 1
+                        ? error.message
+                        : `Multiple errors found:\n${errorSummary}`;
 
                 console.log('================================');
                 console.log('DEBUG REQUEST');
