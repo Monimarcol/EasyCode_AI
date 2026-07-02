@@ -236,4 +236,4 @@ error.log
 # VS Code Extension build artifacts
 easy-code-assistant/node_modules/
 easy-code-assistant/dist/
-easy-code-assistant/*.vsix
+easy-code-assistant/*.vsixtest_error.py
