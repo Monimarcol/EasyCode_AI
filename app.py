@@ -26,6 +26,13 @@ def fix_code():
         ''
     )
 
+    print("========== INCOMING FIX REQUEST ==========")
+    print("CODE CONTEXT:")
+    print(code_context[:2000])
+    print("ERROR MESSAGE:")
+    print(error_message)
+    print("==========================================")
+
     def generate():
             start = time.time()
 
