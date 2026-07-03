@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { streamAssistantResponse } from '../services/ApiClient';
 import { getWorkspaceSummary } from '../workspace/WorkspaceScanner';
+import { getRelatedContext } from '../workspace/ContextRetriever';
 
 
 export class EasyCodeChatProvider implements vscode.WebviewViewProvider {
@@ -67,13 +68,22 @@ export class EasyCodeChatProvider implements vscode.WebviewViewProvider {
 
                         let liveCode = "";
                             let workspaceSummary = "";
+                            let relatedContext = "";
 
                             if (document) {
 
-                                liveCode = document.getText();
+                                liveCode =
+                                    document.getText();
 
                                 workspaceSummary =
-                                    await getWorkspaceSummary();
+                                    await getWorkspaceSummary(
+                                        document.uri
+                                    );
+
+                                relatedContext =
+                                    await getRelatedContext(
+                                        document
+                                    );
                             }
 
                         const patchKeywords = [
@@ -100,16 +110,22 @@ export class EasyCodeChatProvider implements vscode.WebviewViewProvider {
                                 : 'http://127.0.0.1:8000/chat';
 
                         const projectAwareContext = `
-                            PROJECT CONTEXT
+                                PROJECT CONTEXT
 
-                            ${workspaceSummary}
+                                ${workspaceSummary}
 
-                            ==============================
+                                ==============================
 
-                            CURRENT FILE
+                                RELATED PROJECT FILES
 
-                            ${msg.codeContext || liveCode}
-                            `;
+                                ${relatedContext}
+
+                                ==============================
+
+                                CURRENT FILE
+
+                                ${msg.codeContext || liveCode}
+                                `;
 
                             const requestBody =
                                 isPatchRequest
