@@ -1,7 +1,5 @@
-from helpers import format_name
 
-username = "moni"
+from helpers import calculate_total
+total = calculate_total(100, 10)
 
-result = format_name(username)
-
-print(result)
+print(total)
