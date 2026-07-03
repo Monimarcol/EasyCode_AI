@@ -4,6 +4,10 @@ import * as vscode from 'vscode';
 import { streamAssistantResponse } from '../services/ApiClient';
 import { getWorkspaceSummary } from '../workspace/WorkspaceScanner';
 import { getRelatedContext } from '../workspace/ContextRetriever';
+import {
+    buildRepositoryIndex,
+    searchRepositoryIndex
+} from '../workspace/RepositoryIndex';
 
 
 export class EasyCodeChatProvider implements vscode.WebviewViewProvider {
@@ -67,8 +71,9 @@ export class EasyCodeChatProvider implements vscode.WebviewViewProvider {
                         const document = editor?.document;
 
                         let liveCode = "";
-                            let workspaceSummary = "";
-                            let relatedContext = "";
+                        let workspaceSummary = "";
+                        let relatedContext = "";
+                        let searchContext = "";
 
                             if (document) {
 
@@ -84,6 +89,27 @@ export class EasyCodeChatProvider implements vscode.WebviewViewProvider {
                                     await getRelatedContext(
                                         document
                                     );
+
+                                    const repositoryIndex =
+                                        await buildRepositoryIndex();
+
+                                    const searchedFiles =
+                                        searchRepositoryIndex(
+                                            repositoryIndex,
+                                            msg.text,
+                                            5
+                                        );
+
+                                    searchContext =
+                                        searchedFiles
+                                            .map(file => `
+                                    SEARCH MATCH:
+                                    ${file.path}
+
+                                    CONTENT:
+                                    ${file.contentPreview}
+                                    `.trim())
+                                            .join('\n\n==============================\n\n');
                             }
 
                         const patchKeywords = [
@@ -122,10 +148,18 @@ export class EasyCodeChatProvider implements vscode.WebviewViewProvider {
 
                                 ==============================
 
+                                SEARCHED REPOSITORY CONTEXT
+
+                                ${searchContext || "No repository search matches found."}
+
+                                ==============================
+
                                 CURRENT FILE
 
-                                ${msg.codeContext || liveCode}
+                                ${liveCode}
                                 `;
+
+                            
 
                             const requestBody =
                                 isPatchRequest
