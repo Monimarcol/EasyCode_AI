@@ -28,7 +28,7 @@ def fix_code():
 
     print("========== INCOMING FIX REQUEST ==========")
     print("CODE CONTEXT:")
-    print(code_context[:2000])
+    print(code_context)
     print("ERROR MESSAGE:")
     print(error_message)
     print("==========================================")
@@ -65,6 +65,12 @@ delete
 
 Rules:
 
+- Before generating patches, inspect PROJECT CONTEXT, RELATED PROJECT FILES, SEARCHED REPOSITORY CONTEXT, and CURRENT FILE.
+- If an undefined name looks like a typo of a symbol found in repository context, replace it with that symbol.
+- If that corrected symbol is not imported in CURRENT FILE, also add the required import.
+- Return all required patches together in one response.
+- Do not create a new function in CURRENT FILE if the function already exists in repository context.
+- Prefer importing existing project functions over redefining them.
 - Fix ALL errors listed in ERROR.
 - Return one small patch block per fix.
 - NEW must contain code only.
@@ -89,6 +95,20 @@ Rules:
 - Do not use JSON.
 - Do not use markdown.
 - Do not explain.
+
+Planning protocol:
+
+Before writing PATCH_START blocks, internally decide:
+
+1. What is the exact broken symbol or line?
+2. Is there a similar existing symbol in RELATED PROJECT FILES or SEARCHED REPOSITORY CONTEXT?
+3. If yes, use that existing symbol.
+4. If using a symbol from another file, check whether CURRENT FILE already imports it.
+5. If not imported, add an insert_before patch for the import.
+6. Then add the replace patch for the broken usage.
+
+Return only PATCH_START blocks.
+Do not output the plan.
 
 Example:
 
@@ -125,6 +145,38 @@ OLD:
 pritn
 NEW:
 print
+PATCH_END
+
+Planning example:
+
+CURRENT FILE:
+total = calculate_totle(100, 10)
+
+SEARCHED REPOSITORY CONTEXT:
+SEARCH MATCH:
+math_utils.py
+
+CONTENT:
+def calculate_total(price, tax):
+    return price + tax
+
+Expected response:
+
+PATCH_START
+TYPE: insert_before
+OLD:
+total = calculate_totle(100, 10)
+NEW:
+from math_utils import calculate_total
+
+PATCH_END
+
+PATCH_START
+TYPE: replace
+OLD:
+total = calculate_totle(100, 10)
+NEW:
+total = calculate_total(100, 10)
 PATCH_END
 """
                     },

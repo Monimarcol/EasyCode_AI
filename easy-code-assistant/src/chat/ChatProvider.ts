@@ -4,6 +4,11 @@ import * as vscode from 'vscode';
 import { streamAssistantResponse } from '../services/ApiClient';
 import { getWorkspaceSummary } from '../workspace/WorkspaceScanner';
 import { getRelatedContext } from '../workspace/ContextRetriever';
+import { buildSymbolIndex } from '../workspace/SymbolIndexer';
+import {
+    validatePatch,
+    sortPatchChanges
+} from '../patch/PatchValidator';
 import {
     buildRepositoryIndex,
     searchRepositoryIndex
@@ -74,6 +79,7 @@ export class EasyCodeChatProvider implements vscode.WebviewViewProvider {
                         let workspaceSummary = "";
                         let relatedContext = "";
                         let searchContext = "";
+                        let symbolContext = "";
 
                             if (document) {
 
@@ -111,6 +117,18 @@ export class EasyCodeChatProvider implements vscode.WebviewViewProvider {
                                     `.trim())
                                             .join('\n\n==============================\n\n');
                             }
+
+                            const symbols =
+                                await buildSymbolIndex();
+
+                            symbolContext =
+                                symbols
+                                    .slice(0, 50)
+                                    .map(symbol => `
+                            ${symbol.type.toUpperCase()}: ${symbol.name}
+                            FILE: ${symbol.file}
+                            `.trim())
+                                    .join('\n\n');
 
                         const patchKeywords = [
                             'replace',
@@ -151,6 +169,12 @@ export class EasyCodeChatProvider implements vscode.WebviewViewProvider {
                                 SEARCHED REPOSITORY CONTEXT
 
                                 ${searchContext || "No repository search matches found."}
+
+                                ==============================
+
+                                PROJECT SYMBOLS
+
+                                ${symbolContext || "No project symbols found."}
 
                                 ==============================
 
@@ -247,6 +271,18 @@ export class EasyCodeChatProvider implements vscode.WebviewViewProvider {
 
         return;
     }
+    const validatedPatch =
+        sortPatchChanges(
+            validatePatch(patch)
+        );
+
+    if (validatedPatch.changes.length === 0) {
+        vscode.window.showWarningMessage(
+            'No valid AI patch changes found.'
+        );
+
+        return;
+    }
 
 
     const originalText =
@@ -257,7 +293,7 @@ export class EasyCodeChatProvider implements vscode.WebviewViewProvider {
 
     let changedCount = 0;
 
-    for (const change of patch.changes) {
+    for (const change of validatedPatch.changes) {
 
         try {
 
@@ -366,20 +402,28 @@ changedCount++;
 
     let searchText = anchor;
 
-    // Try exact match first
-    if (!documentText.includes(searchText)) {
-        searchText = anchor.trim();
-    }
+// Try exact match first
+if (!documentText.includes(searchText)) {
+    searchText = anchor.trim();
+}
 
-    // Still not found
-    if (!documentText.includes(searchText)) {
+// Try first line of multiline anchor
+if (!documentText.includes(searchText)) {
+    searchText = anchor
+        .split("\n")
+        .map((line: string) => line.trim())
+        .find((line: string) => line.length > 0) || "";
+}
 
-        console.log(
-            "INSERT_BEFORE FAILED - anchor not found"
-        );
+// Still not found
+if (!searchText || !documentText.includes(searchText)) {
 
-        continue;
-    }
+    console.log(
+        "INSERT_BEFORE FAILED - anchor not found"
+    );
+
+    continue;
+}
 
     const index =
         documentText.indexOf(searchText);
