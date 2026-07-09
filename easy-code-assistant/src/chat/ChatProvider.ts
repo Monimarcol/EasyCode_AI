@@ -5,6 +5,7 @@ import { streamAssistantResponse } from '../services/ApiClient';
 import { getWorkspaceSummary } from '../workspace/WorkspaceScanner';
 import { getRelatedContext } from '../workspace/ContextRetriever';
 import { buildSymbolIndex } from '../workspace/SymbolIndexer';
+import { buildCodeChunkIndex,searchCodeChunks } from '../workspace/CodeChunker';
 import {
     validatePatch,
     sortPatchChanges
@@ -79,6 +80,7 @@ export class EasyCodeChatProvider implements vscode.WebviewViewProvider {
                         let workspaceSummary = "";
                         let relatedContext = "";
                         let searchContext = "";
+                        let chunkContext = "";
                         let symbolContext = "";
 
                             if (document) {
@@ -129,6 +131,58 @@ export class EasyCodeChatProvider implements vscode.WebviewViewProvider {
                             FILE: ${symbol.file}
                             `.trim())
                                     .join('\n\n');
+                            
+                                    const codeChunks =
+                                        await buildCodeChunkIndex();
+
+                                    const retrievedChunks =
+                                        searchCodeChunks(
+                                            codeChunks,
+                                            msg.text,
+                                            5
+                                        );
+
+                                    chunkContext =
+                                        retrievedChunks
+                                            .map(chunk => `
+                                    CHUNK:
+                                    ${chunk.file}
+
+                                    SYMBOL:
+                                    ${chunk.symbol}
+
+                                    TYPE:
+                                    ${chunk.type}
+
+                                    LINES:
+                                    ${chunk.startLine}-${chunk.endLine}
+
+                                    CONTENT:
+                                    ${chunk.content}
+                                    `.trim())
+                                            .join('\n\n==============================\n\n');
+
+                                    console.log("================================");
+                                    console.log("RETRIEVED CODE CHUNKS");
+                                    console.log(
+                                        retrievedChunks.map(chunk => ({
+                                            file: chunk.file,
+                                            symbol: chunk.symbol,
+                                            type: chunk.type
+                                        }))
+                                    );
+                                    console.log("================================");
+
+                                    console.log("CODE CHUNKS:");
+                                    console.log(
+                                        codeChunks.slice(0, 10).map(chunk => ({
+                                            file: chunk.file,
+                                            symbol: chunk.symbol,
+                                            type: chunk.type,
+                                            startLine: chunk.startLine,
+                                            endLine: chunk.endLine
+                                        }))
+                                    );
 
                         const patchKeywords = [
                             'replace',
@@ -175,6 +229,12 @@ export class EasyCodeChatProvider implements vscode.WebviewViewProvider {
                                 PROJECT SYMBOLS
 
                                 ${symbolContext || "No project symbols found."}
+
+                                ==============================
+
+                                RETRIEVED CODE CHUNKS
+
+                                ${chunkContext || "No code chunks retrieved."}
 
                                 ==============================
 

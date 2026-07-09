@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { isUserProjectFile } from './WorkspaceClassifier';
 
 export interface SymbolInfo {
     name: string;
@@ -23,7 +24,11 @@ export async function buildSymbolIndex(): Promise<SymbolInfo[]> {
             await vscode.workspace.openTextDocument(file);
 
         const relativePath =
-            vscode.workspace.asRelativePath(file);
+    vscode.workspace.asRelativePath(file);
+
+            if (!isUserProjectFile(relativePath)) {
+                continue;
+            }
 
         if (
             relativePath.includes("easy-code-assistant/src/") ||
